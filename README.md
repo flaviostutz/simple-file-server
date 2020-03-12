@@ -31,7 +31,10 @@ services:
 * Execute
 
 ```bash
-curl -d '{"key1":"value1", "key2":"value2"}' -H "Content-Type: application/json" -X POST http://localhost:4000/dir1/file1.json
+curl -d '{"key1":"value1", "key2":"value2"}' -H "Content-Type: application/json" -X PUT http://localhost:4000/dir1/file1.json
 
-curl -d '{"key1":"value1", "key2":"value2"}' -H "Content-Type: application/json" -X PUT http://localhost:4000/dir2
+curl http://localhost:4000/dir1/file1.json
+
+curl -d '{"key1":"value1", "key2":"value2"}' -H "Content-Type: application/json" -X POST http://localhost:4000/dir2
+
 ```

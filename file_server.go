@@ -168,7 +168,6 @@ func checkAuthBearer(r *http.Request, sharedKey string) bool {
 		return true
 	}
 	ha := r.Header["Authorization"]
-	fmt.Printf(">>>> %v", ha)
 	if len(ha) == 0 {
 		return false
 	}
