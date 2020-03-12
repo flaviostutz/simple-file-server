@@ -31,7 +31,6 @@ func startFileServer() {
 }
 
 func fileServer(w http.ResponseWriter, r *http.Request) {
-
 	//handle file GET
 	if r.Method == "GET" {
 		if !checkAuthBearer(r, readSharedKey) {
@@ -169,14 +168,15 @@ func checkAuthBearer(r *http.Request, sharedKey string) bool {
 		return true
 	}
 	ha := r.Header["Authorization"]
+	fmt.Printf(">>>> %v", ha)
 	if len(ha) == 0 {
 		return false
 	}
 	bearer := ha[0]
-	re := regexp.MustCompile("Bearer:\\s*(.*)")
-	result := re.FindAllString(bearer, -1)
+	re := regexp.MustCompile("Bearer\\s+(.*)")
+	result := re.FindAllStringSubmatch(bearer, -1)
 	if len(result) == 1 {
-		if result[0] == readSharedKey {
+		if result[0][1] == sharedKey {
 			return true
 		}
 	}

@@ -8,8 +8,8 @@ services:
     ports:
       - "4000:4000"
     environment:
-      - WRITE_SHARED_KEY=
-      - READ_SHARED_KEY=
       - LOG_LEVEL=debug
+      # - WRITE_SHARED_KEY=abc
+      # - READ_SHARED_KEY=123
 
       
