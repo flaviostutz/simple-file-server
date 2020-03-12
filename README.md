@@ -23,6 +23,7 @@ services:
     environment:
       - WRITE_SHARED_KEY=
       - READ_SHARED_KEY=
+      - LOCATION_BASE_URL=http://localhost:4000
       - LOG_LEVEL=debug
 ```
 
