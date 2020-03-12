@@ -2,11 +2,14 @@ version: '3.7'
 
 services:
 
-  file-server:
+  simple-file-server:
     build: .
-    image: flaviostutz/file-server
+    image: flaviostutz/simple-file-server
     ports:
       - "4000:4000"
     environment:
-      - MAX_FILESIZE_KB=1000
-      - UPLOAD_PATH=/data
+      - WRITE_SHARED_KEY=
+      - READ_SHARED_KEY=
+      - LOG_LEVEL=debug
+
+      

@@ -1,4 +1,10 @@
 #!/bin/sh
 
 echo "Starting file server..."
-start -h 0.0.0.0 -p 4000 -s /data -u $UPLOAD_PATH -m $MAX_FILESIZE_KB 
+simple-file-server \
+     --read-shared-key=$READ_SHARED_KEY \
+     --write-shared-key=$WRITE_SHARED_KEY \
+     --loglevel=$LOG_LEVEL \
+     --data-dir=$DATA_DIR
+     
+

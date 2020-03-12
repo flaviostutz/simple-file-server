@@ -1,11 +1,25 @@
-FROM node:13.10.1-alpine3.11
+FROM golang:1.14.0-alpine3.11
 
-ENV MAX_FILESIZE_KB '10240'
-ENV UPLOAD_PATH '/files'
+ENV LOG_LEVEL 'info'
+ENV WRITE_SHARED_KEY ''
+ENV READ_SHARED_KEY ''
+ENV DATA_DIR '/data'
 
-RUN npm install -g upload-test-server
+RUN apk add --no-cache build-base
+
+WORKDIR /simple-file-server
+
+ADD go.mod .
+RUN go mod download
+
+ADD / /simple-file-server
+WORKDIR /simple-file-server
+RUN go test
+RUN go build -o /usr/bin/simple-file-server
 
 ADD startup.sh /
+
+VOLUME [ "/data" ]
 
 CMD [ "/startup.sh" ]
 
