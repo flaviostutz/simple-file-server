@@ -64,7 +64,7 @@ func fileServer(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(fmt.Sprintf("Error reading metadata json. err=%s", err)))
 			return
 		}
-		logrus.Debugf("Metadata file read ok. file=%s", fn)
+		// logrus.Debugf("Metadata file read ok. file=%s", fn)
 
 		w.Header().Set("Content-Type", metadata["contentType"])
 		w.Header().Set("Last-Modified", metadata["lastModified"])
