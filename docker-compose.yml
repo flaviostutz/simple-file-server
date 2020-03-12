@@ -1,0 +1,45 @@
+version: '3.7'
+
+services:
+
+  upload-test-server:
+    build: .
+    image: flaviostutz/cam-event-detector
+    ports:
+      - "2222:22"
+    restart: always
+    environment:
+      - CAM_ID=cam1
+      - VIDEO_SOURCE_URL=rtsp://dummy-rtsp-relay:8554/stream
+      - EVENT_POST_ENDPOINT=http://dummy-event-receiver:3000/events
+      - IMAGE_POST_ENDPOINT=http://dummy-event-receiver:3000/images
+      - EVENT_SCENE_IMAGE_ENABLE=false
+    volumes:
+      - ../:/workspace
+
+  dummy-rtsp-relay:
+    image: flaviostutz/rtsp-relay
+    ports: 
+      - 8554:8554
+      - 8000:8000
+      - 8001:8001
+    environment:
+      # - SOURCE_URL=http://87.57.111.162/mjpg/video.mjpg
+      - SOURCE_URL=file:///samples/cars1.mp4
+      # - FFMPEG_INPUT_ARGS=-vf “setpts=(4)*PTS”
+    volumes:
+      - ./samples:/samples
+
+  dummy-event-receiver:
+    image: flaviostutz/json-server
+    ports:
+      - 3000:3000
+    environment:
+      - COLLECTIONS=events,images
+      - RESPONSE_DELAY_MS=300
+
+  minio-s3:
+    image: minio/minio:9116-3c89fac
+    ports:
+      - 9000:9000
+    command: server /data
