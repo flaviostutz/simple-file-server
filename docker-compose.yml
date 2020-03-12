@@ -13,4 +13,3 @@ services:
       # - WRITE_SHARED_KEY=abc
       # - READ_SHARED_KEY=123
 
-      

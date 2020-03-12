@@ -159,13 +159,13 @@ func fileServer(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		w.Header().Set("Content-Type", "text/plain")
+		w.Header().Set("Location", opt.locationBaseURL+fileLocation)
 		if newFile {
 			w.WriteHeader(http.StatusCreated)
 		} else {
 			w.WriteHeader(http.StatusOK)
 		}
-		w.Header().Set("Content-Type", "text/plain")
-		w.Header().Set("Location", opt.locationBaseURL+fileLocation)
 		w.Write([]byte(fileLocation))
 		return
 
