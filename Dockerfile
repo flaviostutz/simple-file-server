@@ -3,6 +3,7 @@ FROM golang:1.14.0-alpine3.11
 ENV LOG_LEVEL 'info'
 ENV WRITE_SHARED_KEY ''
 ENV READ_SHARED_KEY ''
+ENV LOCATION_BASE_URL ''
 ENV DATA_DIR '/data'
 
 RUN apk add --no-cache build-base

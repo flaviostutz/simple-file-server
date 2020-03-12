@@ -9,6 +9,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
@@ -19,11 +20,11 @@ var baseFileServer http.Handler
 func startFileServer() {
 	logrus.Infof("Starting SIMPLE FILE SERVER")
 
-	var d = http.Dir(filesDir)
+	var d = http.Dir(opt.filesDir)
 	baseFileServer = http.FileServer(d)
 
-	os.MkdirAll(filesDir, os.ModePerm)
-	os.MkdirAll(metaDir, os.ModePerm)
+	os.MkdirAll(opt.filesDir, os.ModePerm)
+	os.MkdirAll(opt.metaDir, os.ModePerm)
 	http.HandleFunc("/", fileServer)
 
 	log.Printf("Serving on HTTP port 4000\n")
@@ -31,9 +32,10 @@ func startFileServer() {
 }
 
 func fileServer(w http.ResponseWriter, r *http.Request) {
+	logrus.Infof("File %s. uri=%s", r.Method, r.RequestURI)
 	//handle file GET
 	if r.Method == "GET" {
-		if !checkAuthBearer(r, readSharedKey) {
+		if !checkAuthBearer(r, opt.readSharedKey) {
 			w.WriteHeader(403)
 			w.Write([]byte("Unauthorized"))
 			return
@@ -41,11 +43,11 @@ func fileServer(w http.ResponseWriter, r *http.Request) {
 
 		ruri := r.RequestURI
 
-		fn := metaDir + ruri + ".json"
+		fn := opt.metaDir + ruri + ".json"
 
 		if !fileExists(fn) {
 			w.WriteHeader(404)
-			w.Write([]byte("File doesn't exist"))
+			w.Write([]byte("Not found"))
 			return
 		}
 
@@ -65,13 +67,13 @@ func fileServer(w http.ResponseWriter, r *http.Request) {
 		logrus.Debugf("Metadata file read ok. file=%s", fn)
 
 		w.Header().Set("Content-Type", metadata["contentType"])
+		w.Header().Set("Last-Modified", metadata["lastModified"])
 		baseFileServer.ServeHTTP(w, r)
 		return
 
 		//handle file POST
 	} else if r.Method == "POST" || r.Method == "PUT" {
-		logrus.Debugf("File upload. method=%s uri=%s", r.Method, r.RequestURI)
-		if !checkAuthBearer(r, writeSharedKey) {
+		if !checkAuthBearer(r, opt.writeSharedKey) {
 			w.WriteHeader(403)
 			w.Write([]byte("Unauthorized"))
 			return
@@ -88,9 +90,11 @@ func fileServer(w http.ResponseWriter, r *http.Request) {
 				fileLocation = r.RequestURI + u1
 			}
 		}
+
 		logrus.Debugf("Creating new file. fileLocation=%s", fileLocation)
 
-		fn := metaDir + fileLocation + ".json"
+		fn := opt.metaDir + fileLocation + ".json"
+		newFile := !fileExists(fn)
 		fm := make(map[string]string)
 		ct := r.Header["Content-Type"]
 		if len(ct) != 1 {
@@ -99,6 +103,8 @@ func fileServer(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		fm["contentType"] = ct[0]
+		stringTime := time.Now().Format(time.RFC1123)
+		fm["lastModified"] = stringTime
 		metaBytes, err := json.Marshal(fm)
 		if err != nil {
 			w.WriteHeader(500)
@@ -133,7 +139,7 @@ func fileServer(w http.ResponseWriter, r *http.Request) {
 		}
 		logrus.Debugf("File contents read from HTTP")
 
-		fn = filesDir + fileLocation
+		fn = opt.filesDir + fileLocation
 		dir, err = getDir(fn)
 		if err != nil {
 			w.WriteHeader(500)
@@ -153,9 +159,60 @@ func fileServer(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		if newFile {
+			w.WriteHeader(http.StatusCreated)
+		} else {
+			w.WriteHeader(http.StatusOK)
+		}
 		w.Header().Set("Content-Type", "text/plain")
-		w.Header().Set("Location", fileLocation)
+		w.Header().Set("Location", opt.locationBaseURL+fileLocation)
 		w.Write([]byte(fileLocation))
+		return
+
+	} else if r.Method == "DELETE" {
+		if !checkAuthBearer(r, opt.writeSharedKey) {
+			w.WriteHeader(403)
+			w.Write([]byte("Unauthorized"))
+			return
+		}
+
+		ruri := r.RequestURI
+
+		//METADATA FILE
+		fn := opt.metaDir + ruri + ".json"
+
+		if !fileExists(fn) {
+			w.WriteHeader(404)
+			w.Write([]byte("Not found"))
+			return
+		}
+
+		err := os.Remove(fn)
+		if err != nil {
+			w.WriteHeader(500)
+			w.Write([]byte(fmt.Sprintf("File metadata removal error. err=%s", err)))
+			return
+		}
+
+		//CONTENTS FILE
+		fn = opt.filesDir + ruri
+
+		if !fileExists(fn) {
+			w.WriteHeader(404)
+			w.Write([]byte("Not found"))
+			return
+		}
+
+		err = os.Remove(fn)
+		if err != nil {
+			w.WriteHeader(500)
+			w.Write([]byte(fmt.Sprintf("File removal error. err=%s", err)))
+			return
+		}
+
+		w.WriteHeader(200)
+		w.Header().Set("Content-Type", "text/plain")
+		w.Write([]byte("File removed"))
 		return
 	}
 

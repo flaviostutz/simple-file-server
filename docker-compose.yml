@@ -9,6 +9,7 @@ services:
       - "4000:4000"
     environment:
       - LOG_LEVEL=debug
+      - LOCATION_BASE_URL=http://localhost:4000
       # - WRITE_SHARED_KEY=abc
       # - READ_SHARED_KEY=123
 
