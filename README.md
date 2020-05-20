@@ -44,12 +44,19 @@ curl -d '{"key1":"value1", "key2":"value2"}' -H "Content-Type: application/json"
 
 ## REST API
 
-* POST /dir1/dir2 - creates a new file inside /dir1/dir2 and returns the generated file URL in HTTP Header "Location" along with Header ETag, that you can use later to verify if the file has changed or during file updates. Mime type is stored so that GET returns the same mime type.
+* POST /dir1/dir2 - creates a new file inside /dir1/dir2
+  * Accepted headers:
+    * "Mime-Type" - is stored so that later GET returns the same mime type on response
+    * "X-Cache-Control" - is stored so that later GET returns "Cache-Control" header directive in response so that you can have caching proxies on front of this server
+  * Returned headers:
+    * "Location" - new generated file URL
+    * "ETag" - file hash that you can be used later to verify if the file has changed or during file updates
 
-* GET /dir1/dir2/c106fc67-eadb-4d91-beb1-66fc5c35e6a6 - get file contents along with ETag Header and mime type set during creation/update
+* GET /dir1/dir2/c106fc67-eadb-4d91-beb1-66fc5c35e6a6 - get file contents along with ETag Header, Mime-Type and Cache-Control as set during creation/update
 
-  * ETag - if you send Header "If-None-Match" the server will check if the current file's ETag hash is the same as it and if so, will return 304 Not Modified without contents, indicating that the client can still use the file contents in possession. If don't match, the new contents will be returned
+  * ETag - if you send Header "If-None-Match" the server will check if the current file's ETag hash is the same as it and if so, will return 304 Not Modified without contents, indicating that the client can still use the file contents in possession. If hash doesn't match, the new fresh contents will be returned
 
 * PUT /dir1/dir2/c106fc67-eadb-4d91-beb1-66fc5c35e6a6 - updates and existing file or creates a new one with with a custom name (names are arbitrary and don't need to be an uuid)
 
-  * ETag - if you send Header "If-Match" with an ETag hash value, if the file exists and will be updated, it will be checked if the current file on server still has this ETag set and the call will fail if not. This is useful to guarantee that the file wasn't changed from the last time the application got it (other processes may have updated the file in the meanwhile and the application will know by this error)
+  * ETag - when you send Header "If-Match" with an ETag hash Header, before updating any file contents, the server will check if this header value still matches current server file hash contents and fail if doesn't match. This is useful to guarantee that the file wasn't changed from the last time the application got it (other processes may have updated the file in the meanwhile and the application will know by handling this error)
+

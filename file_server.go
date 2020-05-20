@@ -79,6 +79,10 @@ func fileServer(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", metadata["contentType"])
 		w.Header().Set("Last-Modified", metadata["lastModified"])
 		w.Header().Set("ETag", metadata["etag"])
+		cc := metadata["cacheControl"]
+		if cc != "undefined" {
+			w.Header().Set("Cache-Control", cc)
+		}
 		baseFileServer.ServeHTTP(w, r)
 		return
 
@@ -151,6 +155,12 @@ func fileServer(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		fm["contentType"] = ct[0]
+
+		fm["cacheControl"] = "undefined"
+		cc := r.Header["X-Cache-Control"]
+		if len(cc) > 0 {
+			fm["cacheControl"] = cc[0]
+		}
 
 		//FILE CONTENTS
 		contentsFile := opt.filesDir + fileLocation
