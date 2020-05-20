@@ -1,8 +1,10 @@
 package main
 
 import (
+	"crypto/md5"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -66,8 +68,17 @@ func fileServer(w http.ResponseWriter, r *http.Request) {
 		}
 		// logrus.Debugf("Metadata file read ok. file=%s", fn)
 
+		matchETag := r.Header["If-None-Match"]
+		if len(matchETag) > 0 {
+			if metadata["etag"] == matchETag[0] {
+				w.WriteHeader(http.StatusNotModified)
+				return
+			}
+		}
+
 		w.Header().Set("Content-Type", metadata["contentType"])
 		w.Header().Set("Last-Modified", metadata["lastModified"])
+		w.Header().Set("ETag", metadata["etag"])
 		baseFileServer.ServeHTTP(w, r)
 		return
 
@@ -91,10 +102,47 @@ func fileServer(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		logrus.Debugf("Creating new file. fileLocation=%s", fileLocation)
+		logrus.Debugf("Creating new file %s", fileLocation)
 
-		fn := opt.metaDir + fileLocation + ".json"
-		newFile := !fileExists(fn)
+		//PREPARE METADATA
+		metadataFile := opt.metaDir + fileLocation + ".json"
+		metadataFile = strings.ReplaceAll(metadataFile, "//", "/")
+		newFile := !fileExists(metadataFile)
+
+		if !newFile && r.Method == "PUT" {
+			//check file overwrite precondictions
+			matchETag := r.Header["If-Match"]
+			if len(matchETag) > 0 {
+				logrus.Debugf("Verifying if If-Match header matches current ETag value from file")
+				fileMeta, err := ioutil.ReadFile(metadataFile)
+				if err != nil {
+					w.WriteHeader(500)
+					w.Write([]byte(fmt.Sprintf("Error reading metadata file. err=%s", err)))
+					return
+				}
+				var metadata map[string]string
+				err = json.Unmarshal(fileMeta, &metadata)
+				if err != nil {
+					w.WriteHeader(500)
+					w.Write([]byte(fmt.Sprintf("Error reading metadata json. err=%s", err)))
+					return
+				}
+
+				etag, exists2 := metadata["etag"]
+				if !exists2 {
+					w.WriteHeader(500)
+					w.Write([]byte(fmt.Sprintf("Error reading etag value from file metadata. err=%s", err)))
+					return
+				}
+				logrus.Debugf("Current ETag=%s; If-Match etag=%s", etag, matchETag[0])
+				if etag != matchETag[0] {
+					w.WriteHeader(http.StatusPreconditionFailed)
+					w.Write([]byte(fmt.Sprintf("Current file ETag value doesn't match If-Match header provided by client. Other processes may have updated this file after the last time you read it")))
+					return
+				}
+			}
+		}
+
 		fm := make(map[string]string)
 		ct := r.Header["Content-Type"]
 		if len(ct) != 1 {
@@ -103,15 +151,56 @@ func fileServer(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		fm["contentType"] = ct[0]
+
+		//FILE CONTENTS
+		contentsFile := opt.filesDir + fileLocation
+		contentsFile = strings.ReplaceAll(contentsFile, "//", "/")
+		dir, err := getDir(contentsFile)
+		if err != nil {
+			w.WriteHeader(500)
+			w.Write([]byte(fmt.Sprintf("Couldn't get file dir. err=%s", err)))
+			return
+		}
+		err = os.MkdirAll(dir, os.ModePerm)
+		if err != nil {
+			w.WriteHeader(500)
+			w.Write([]byte(fmt.Sprintf("Error creating file dir. err=%s", err)))
+			return
+		}
+
+		f, err := os.OpenFile(contentsFile, os.O_RDWR|os.O_CREATE, os.ModePerm)
+		defer f.Close()
+		if err != nil {
+			w.WriteHeader(500)
+			w.Write([]byte(fmt.Sprintf("Error creating file. err=%s", err)))
+			return
+		}
+
+		fsize, err := io.Copy(f, r.Body)
+		if err != nil {
+			w.WriteHeader(500)
+			w.Write([]byte(fmt.Sprintf("Error writing file contents to disk. err=%s", err)))
+			return
+		}
+		logrus.Debugf("File contents write ok. file=%s", contentsFile)
+
+		//FILE METADATA
+		hsh := md5.New()
+		f2, err := os.OpenFile(contentsFile, os.O_RDONLY, os.ModePerm)
+		_, err = io.Copy(hsh, f2)
+		etag := fmt.Sprintf("\"%x\"", hsh.Sum(nil))
+		fm["etag"] = etag
+
 		stringTime := time.Now().Format(time.RFC1123)
 		fm["lastModified"] = stringTime
+
 		metaBytes, err := json.Marshal(fm)
 		if err != nil {
 			w.WriteHeader(500)
 			w.Write([]byte("Error generating metadata"))
 			return
 		}
-		dir, err := getDir(fn)
+		dir, err = getDir(metadataFile)
 		if err != nil {
 			w.WriteHeader(500)
 			w.Write([]byte(fmt.Sprintf("Couldn't get file dir. err=%s", err)))
@@ -123,44 +212,19 @@ func fileServer(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(fmt.Sprintf("Error creating file dir. err=%s", err)))
 			return
 		}
-		err = ioutil.WriteFile(fn, metaBytes, os.ModePerm)
+		err = ioutil.WriteFile(metadataFile, metaBytes, os.ModePerm)
 		if err != nil {
 			w.WriteHeader(500)
 			w.Write([]byte(fmt.Sprintf("Error writing metadata file. err=%s", err)))
 			return
 		}
-		logrus.Debugf("Metadata file write ok. file=%s", fn)
+		logrus.Debugf("Metadata file write ok. file=%s", metadataFile)
 
-		fileContents, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			w.WriteHeader(500)
-			w.Write([]byte(fmt.Sprintf("Error reading file contents. err=%s", err)))
-			return
-		}
-		logrus.Debugf("File contents read from HTTP")
-
-		fn = opt.filesDir + fileLocation
-		dir, err = getDir(fn)
-		if err != nil {
-			w.WriteHeader(500)
-			w.Write([]byte(fmt.Sprintf("Couldn't get file dir. err=%s", err)))
-			return
-		}
-		err = os.MkdirAll(dir, os.ModePerm)
-		if err != nil {
-			w.WriteHeader(500)
-			w.Write([]byte(fmt.Sprintf("Error creating file dir. err=%s", err)))
-			return
-		}
-		err = ioutil.WriteFile(fn, fileContents, os.ModePerm)
-		if err != nil {
-			w.WriteHeader(500)
-			w.Write([]byte(fmt.Sprintf("Error writing file contents to disk. err=%s", err)))
-			return
-		}
+		logrus.Debugf("File written successfully. file=%s; size=%d", metadataFile, fsize)
 
 		w.Header().Set("Content-Type", "text/plain")
 		w.Header().Set("Location", opt.locationBaseURL+fileLocation)
+		w.Header().Set("ETag", etag)
 		if newFile {
 			w.WriteHeader(http.StatusCreated)
 		} else {
