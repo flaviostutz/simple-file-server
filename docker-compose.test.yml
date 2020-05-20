@@ -21,4 +21,6 @@ services:
       - WAIT_TIME_SECONDS=5
       - WAIT_CONNECT_HOST=sfs
       - WAIT_CONNECT_PORT=4000
+    depends_on:
+      - sfs
 
