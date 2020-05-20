@@ -60,3 +60,16 @@ curl -d '{"key1":"value1", "key2":"value2"}' -H "Content-Type: application/json"
 
   * ETag - when you send Header "If-Match" with an ETag hash Header, before updating any file contents, the server will check if this header value still matches current server file hash contents and fail if doesn't match. This is useful to guarantee that the file wasn't changed from the last time the application got it (other processes may have updated the file in the meanwhile and the application will know by handling this error)
 
+## Automated tests
+
+To run automated tests againts REST API, run
+```
+docker-compose -f docker-compose.test.yml up --build
+```
+
+This will build and run "simple-file-server" and another container with POSTMAN scripts to be executed against the server and check results.
+
+For more info on how this "POSTMAN" runner works, go to https://github.com/flaviostutz/postman-runner
+
+This tests will be run automatically if this repo is integrated to DockerHub with "Automated Tests" enabled (https://docs.docker.com/docker-hub/builds/automated-testing/).
+

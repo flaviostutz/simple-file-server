@@ -1,0 +1,301 @@
+{
+	"info": {
+		"_postman_id": "f853fc4a-1a18-489f-9492-f54f2d37a85c",
+		"name": "simple-file-server",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "POST / create file",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "fe6c8be9-d58d-46ed-ad7a-448bcbdf54cc",
+						"exec": [
+							"pm.test(\"Status code is 201\", function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"",
+							"pm.test(\"Location header returned\", function () {",
+							"    pm.response.to.have.header(\"Location\");",
+							"});",
+							"postman.setEnvironmentVariable(\"location1\", pm.response.headers.get(\"Location\"));",
+							"",
+							"pm.test(\"ETag header returned\", function () {",
+							"    pm.response.to.have.header(\"ETag\");",
+							"});",
+							"postman.setEnvironmentVariable(\"etag1\", pm.response.headers.get(\"ETag\"));",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "test"
+				},
+				"url": "{{serverUrl}}"
+			},
+			"response": []
+		},
+		{
+			"name": "GET /[id] unmodified",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "2d2a8de2-f868-4eaf-8098-0ec94b7f9f13",
+						"exec": [
+							"pm.test(\"Status code is 304\", function () {",
+							"    pm.response.to.have.status(304);",
+							"});",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "If-None-Match",
+						"type": "text",
+						"value": "{{etag1}}"
+					}
+				],
+				"url": "{{location1}}"
+			},
+			"response": []
+		},
+		{
+			"name": "GET /[id] modified",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "c6c25a6f-5f7a-4262-a044-fc19ef073a0e",
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"ETag header returned\", function () {",
+							"    pm.response.to.have.header(\"ETag\");",
+							"});",
+							"",
+							"pm.test(\"Body is correct\", function () {",
+							"    pm.response.to.have.body(\"test\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": "{{location1}}"
+			},
+			"response": []
+		},
+		{
+			"name": "PUT /[id] without etag check",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "91425595-8e40-498b-a14c-151b6aeabc9a",
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"ETag header returned\", function () {",
+							"    pm.response.to.have.header(\"ETag\");",
+							"});",
+							"postman.setEnvironmentVariable(\"etag1\", pm.response.headers.get(\"ETag\"));",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "test2\n"
+				},
+				"url": "{{location1}}"
+			},
+			"response": []
+		},
+		{
+			"name": "PUT /[id] with invalid etag",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "86caea83-552c-4f15-ad25-60fdde7126bb",
+						"exec": [
+							"pm.test(\"Status code is 412\", function () {",
+							"    pm.response.to.have.status(412);",
+							"});",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "If-Match",
+						"value": "ANYTHING",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "test3"
+				},
+				"url": "{{location1}}"
+			},
+			"response": []
+		},
+		{
+			"name": "PUT /[id] with valid etag",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "7be5a331-ed0c-4659-98ff-4b3a681d9518",
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"ETag header returned\", function () {",
+							"    pm.response.to.have.header(\"ETag\");",
+							"});",
+							"postman.setEnvironmentVariable(\"etag1\", pm.response.headers.get(\"ETag\"));",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "If-Match",
+						"value": "{{etag1}}",
+						"type": "text"
+					},
+					{
+						"key": "X-Cache-Control",
+						"value": "max-age=3",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "test4"
+				},
+				"url": "{{location1}}"
+			},
+			"response": []
+		},
+		{
+			"name": "GET /[id] modified with etag check",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "c81f3ded-cefb-4783-a9a4-96962df45929",
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Cache-Control present\", function () {",
+							"    pm.response.to.be.header(\"Cache-Control\", \"max-age=3\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "If-None-Match",
+						"type": "text",
+						"value": "ANYOTHERETAG"
+					}
+				],
+				"url": "{{location1}}"
+			},
+			"response": []
+		},
+		{
+			"name": "DELETE /[id] inexistent",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "ec674b4a-d05a-45e0-b64c-5714a865b1bb",
+						"exec": [
+							"pm.test(\"Status code is 404\", function () {",
+							"    pm.response.to.have.status(404);",
+							"});",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": "{{location1}}aaa"
+			},
+			"response": []
+		},
+		{
+			"name": "DELETE /[id] success",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "610acfae-9b4e-499c-b734-1dccf1eba35d",
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": "{{location1}}"
+			},
+			"response": []
+		}
+	],
+	"protocolProfileBehavior": {}
+}

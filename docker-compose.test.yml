@@ -1,0 +1,24 @@
+version: '3.7'
+
+services:
+
+  sfs:
+    build: .
+    image: flaviostutz/simple-file-server
+    environment:
+      - LOG_LEVEL=debug
+      - LOCATION_BASE_URL=http://sfs:4000
+      # - WRITE_SHARED_KEY=abc
+      # - READ_SHARED_KEY=123
+
+  sut:
+    build: tests/.
+    environment:
+      - LOG_LEVEL=debug
+      - RUN_ON_STARTUP=true
+      - RUN_API_SERVER=false
+      - SFS_URL=http://sfs:4000
+      - WAIT_TIME_SECONDS=5
+      - WAIT_CONNECT_HOST=sfs
+      - WAIT_CONNECT_PORT=4000
+
