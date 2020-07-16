@@ -1,5 +1,8 @@
 # simple-file-server
 
+[<img src="https://img.shields.io/docker/pulls/flaviostutz/simple-file-server"/>](https://hub.docker.com/r/flaviostutz/simple-file-server)
+[<img src="https://img.shields.io/docker/automated/flaviostutz/simple-file-server"/>](https://hub.docker.com/r/flaviostutz/simple-file-server)
+
 Simple HTTP based file server.
 
 Supports Uploading and Downloads.
