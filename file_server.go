@@ -186,6 +186,9 @@ func fileServer(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		f.Truncate(0)
+		f.Seek(0, 0)
+
 		fsize, err := io.Copy(f, r.Body)
 		if err != nil {
 			w.WriteHeader(500)
