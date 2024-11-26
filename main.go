@@ -2,7 +2,9 @@ package main
 
 import (
 	"flag"
+	"net/url"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/sirupsen/logrus"
@@ -15,6 +17,7 @@ type options struct {
 	filesDir        string
 	metaDir         string
 	locationBaseURL string
+	port            int
 }
 
 var opt options
@@ -25,6 +28,7 @@ func main() {
 	writeSharedKey0 := flag.String("write-shared-key", "", "Required shared key present in Authorization: Bearer [KEY] Header for WRITING files")
 	dataDir0 := flag.String("data-dir", "", "Directory where files will be saved")
 	locationBaseURL0 := flag.String("location-base-url", "", "Base URL for prefixing the absolute Location headers")
+	port0 := flag.Int("port", 4000, "Port for the HTTP server")
 	flag.Parse()
 
 	switch *logLevel {
@@ -48,14 +52,33 @@ func main() {
 		locationBaseURL: *locationBaseURL0,
 		filesDir:        *dataDir0 + "/files/",
 		metaDir:         *dataDir0 + "/meta/",
+		port:            *port0,
 	}
 
-	if !strings.HasPrefix(opt.locationBaseURL, "http://") && !strings.HasPrefix(opt.locationBaseURL, "https://") {
-		logrus.Errorf("'--location-base-url' is required and must be in format 'http://[host]:[port] or https://[host]:[port]'")
+	if opt.locationBaseURL == "" {
+		logrus.Error("'--location-base-url' is required")
 		os.Exit(1)
 	}
 
-	opt.locationBaseURL = strings.Trim(opt.locationBaseURL, "/")
+	if !strings.HasPrefix(opt.locationBaseURL, "http://") && !strings.HasPrefix(opt.locationBaseURL, "https://") {
+		logrus.Error("'--location-base-url' must be in format 'http://[host] or https://[host]'")
+		os.Exit(1)
+	}
+
+	u, err := url.Parse(opt.locationBaseURL)
+	if err != nil {
+		logrus.Errorf("Invalid '--location-base-url': %v", err)
+		os.Exit(1)
+	}
+
+	// Add port to the base URL if not already present
+	if u.Port() == "" {
+		u.Host = u.Host + ":" + strconv.Itoa(opt.port)
+	}
+	opt.locationBaseURL = strings.TrimRight(u.String(), "/")
+
+	logrus.Infof("Port: %d", opt.port)
+	logrus.Infof("Base URL: %s", opt.locationBaseURL)
 
 	startFileServer()
 }

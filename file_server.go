@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -29,8 +30,26 @@ func startFileServer() {
 	os.MkdirAll(opt.metaDir, os.ModePerm)
 	http.HandleFunc("/", fileServer)
 
-	log.Printf("Serving on HTTP port 4000\n")
-	log.Fatal(http.ListenAndServe(":4000", nil))
+	port := strconv.Itoa(opt.port)
+	if opt.port == 443 {
+		// In case HTTPS in port 443
+		certFile := "localhost.crt"
+		if _, err := os.Stat(certFile); os.IsNotExist(err) {
+			log.Fatalf("Certificate file '%s' not found. Please follow 'Generate Certificate' in README to create it.", certFile)
+		}
+		log.Printf("Serving on HTTPS port %s\n", port)
+		err := http.ListenAndServeTLS(":"+port, "localhost.crt", "localhost.key", nil)
+		if err != nil {
+			log.Fatal("Failed to start HTTPS server: ", err)
+		}
+	} else {
+		// Other cases
+		log.Printf("Serving on HTTP port %s\n", port)
+		err := http.ListenAndServe(":"+port, nil)
+		if err != nil {
+			log.Fatal("Failed to start HTTP server: ", err)
+		}
+	}
 }
 
 func fileServer(w http.ResponseWriter, r *http.Request) {
@@ -114,7 +133,7 @@ func fileServer(w http.ResponseWriter, r *http.Request) {
 		newFile := !fileExists(metadataFile)
 
 		if !newFile && r.Method == "PUT" {
-			//check file overwrite precondictions
+			//check file overwrite preconditions
 			matchETag := r.Header["If-Match"]
 			if len(matchETag) > 0 {
 				logrus.Debugf("Verifying if If-Match header matches current ETag value from file")
@@ -327,7 +346,7 @@ func fileExists(filename string) bool {
 func getDir(fullFilePath string) (string, error) {
 	li := strings.LastIndex(fullFilePath, "/")
 	if li == -1 {
-		return "", fmt.Errorf("Coudln't get dir from path")
+		return "", fmt.Errorf("Couldn't get dir from path")
 	}
 	return fullFilePath[:li], nil
 }
