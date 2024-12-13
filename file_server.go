@@ -68,7 +68,16 @@ func fileServer(w http.ResponseWriter, r *http.Request) {
 		}
 		// logrus.Debugf("Metadata file read ok. file=%s", fn)
 
-		matchETag := r.Header["If-None-Match"]
+		w.Header().Set("Content-Type", metadata["contentType"])
+		w.Header().Set("Last-Modified", metadata["lastModified"])
+		w.Header().Set("ETag", metadata["etag"])
+		cc := metadata["cacheControl"]
+		matchETag := r.Header["If-None-Match"]		
+
+		if cc != "undefined" {
+			w.Header().Set("Cache-Control", cc)
+		}
+
 		if len(matchETag) > 0 {
 			if metadata["etag"] == matchETag[0] {
 				w.WriteHeader(http.StatusNotModified)
@@ -76,13 +85,6 @@ func fileServer(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		w.Header().Set("Content-Type", metadata["contentType"])
-		w.Header().Set("Last-Modified", metadata["lastModified"])
-		w.Header().Set("ETag", metadata["etag"])
-		cc := metadata["cacheControl"]
-		if cc != "undefined" {
-			w.Header().Set("Cache-Control", cc)
-		}
 		baseFileServer.ServeHTTP(w, r)
 		return
 
