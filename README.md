@@ -33,6 +33,8 @@ services:
       - LOG_LEVEL=debug
 ```
 
+* Run docker-compose build
+
 * Run docker-compose up
 
 * Execute
@@ -77,3 +79,38 @@ For more info on how this "POSTMAN" runner works, go to https://github.com/flavi
 
 This tests will be run automatically if this repo is integrated to DockerHub with "Automated Tests" enabled (https://docs.docker.com/docker-hub/builds/automated-testing/).
 
+## Generate Certificate (⚠ Only for local test purpose)
+
+```bash
+org=localhost
+domain=localhost
+openssl genpkey -algorithm RSA -out "$domain".key
+openssl req -x509 -key "$domain".key -out "$domain".crt \
+    -subj "/CN=$domain/O=$org" \
+    -config <(cat /etc/ssl/openssl.cnf - <<END
+[ x509_ext ]
+basicConstraints = critical,CA:true
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid:always,issuer
+subjectAltName = IP:127.0.0.1
+END
+    ) -extensions x509_ext
+```
+
+*Note*:
+subjectAltName IP:127.0.0.1 can not be replace by DNS:localhost as host verification will failled
+cf : inline bool SSLClient::verify_host(X509 *server_cert) const
+https://github.com/yhirose/cpp-httplib/blob/ae63b89cbf70481ae60515dfd95467e91eecd992/httplib.h#L9171C1-L9171C62
+
+## Update root certificates (⚠ Only for local test purpose)
+
+```bash
+sudo trust anchor "$domain".crt
+```
+
+Or
+
+```bash
+sudo cp "$domain".crt /usr/local/share/ca-certificates/
+sudo update-ca-certificates
+```

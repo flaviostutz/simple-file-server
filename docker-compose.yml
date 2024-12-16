@@ -1,15 +1,18 @@
-version: '3.6'
-
 services:
-
   simple-file-server:
-    build: .
-    image: flaviostutz/simple-file-server
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: simple-file-server
     ports:
-      - "4000:4000"
+      - "443:443"
+    volumes:
+      - ./data:/data
     environment:
       - LOG_LEVEL=debug
-      - LOCATION_BASE_URL=http://localhost:4000
+      - DATA_DIR=/data
+      - LOCATION_BASE_URL=http://127.0.0.1
+      - PORT=443
       # - WRITE_SHARED_KEY=abc
       # - READ_SHARED_KEY=123
 

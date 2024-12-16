@@ -1,26 +1,27 @@
-FROM golang:1.14.0-alpine3.11
+FROM golang:1.23.3-alpine3.20
 
-ENV LOG_LEVEL 'info'
-ENV WRITE_SHARED_KEY ''
-ENV READ_SHARED_KEY ''
-ENV LOCATION_BASE_URL ''
-ENV DATA_DIR '/data'
+ENV LOG_LEVEL='info' \
+    WRITE_SHARED_KEY='' \
+    READ_SHARED_KEY='' \
+    LOCATION_BASE_URL='' \
+    DATA_DIR='/data' \
+    PORT=''
 
 RUN apk add --no-cache build-base
 
 WORKDIR /simple-file-server
 
-ADD go.mod .
+COPY go.mod go.sum ./
 RUN go mod download
 
-ADD / /simple-file-server
-WORKDIR /simple-file-server
-# RUN go test
+COPY . .
+
 RUN go build -o /usr/bin/simple-file-server
 
-ADD startup.sh /
+COPY startup.sh /startup.sh
 
-VOLUME [ "/data" ]
+RUN chmod +x /startup.sh
 
-CMD [ "/startup.sh" ]
+VOLUME ["/data"]
 
+ENTRYPOINT ["/startup.sh"]
